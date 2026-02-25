@@ -1,0 +1,408 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>HabitFlow Elite</title>
+
+<style>
+body{
+margin:0;
+font-family:'Helvetica',sans-serif;
+background:#0f172a;
+color:#e5e7eb;
+overflow-x:hidden;
+}
+
+/* ===== WELCOME PAGE ===== */
+#welcomePage{
+height:100vh;
+display:flex;
+flex-direction:column;
+justify-content:center;
+align-items:center;
+text-align:center;
+background:linear-gradient(145deg,#0f172a,#111827);
+}
+
+#welcomePage h1{ font-size:3rem; margin-bottom:15px; color:#f8fafc; }
+#welcomePage p{ color:#94a3b8; margin-bottom:30px; }
+
+.start-btn{
+padding:15px 35px; font-size:18px; background:#c6a75e; border:none;
+border-radius:10px; cursor:pointer; font-weight:bold; color:#0f172a;
+transition:0.3s;
+}
+.start-btn:hover{ background:#b8964f; transform:scale(1.05); }
+
+/* ===== APP PAGE ===== */
+#appPage{ display:none; padding:30px; max-width:1000px; margin:auto; }
+h2{ text-align:center; margin-top:30px; }
+
+.add-habit{
+display:flex; justify-content:center; gap:10px; flex-wrap:wrap; margin-bottom:10px;
+}
+.add-habit input, .add-habit select {
+padding:12px; border-radius:8px; border:1px solid #334155;
+background:#1e293b; color:#f1f5f9;
+}
+.add-habit button{
+padding:12px 20px; border:none; background:#c6a75e; color:#0f172a;
+font-weight:bold; border-radius:8px; cursor:pointer; transition:0.2s;
+}
+.add-habit button:hover { background:#b8964f; }
+
+#newHabitBox{ display:none; margin-top:10px; text-align:center; }
+
+.dashboard{ display:flex; justify-content:space-around; margin:25px 0; }
+.stat{ background:#1e293b; padding:18px; width:30%; border-radius:12px; text-align:center; }
+
+/* Habit Cards & Animations */
+.habit-card{
+background:#1e293b; padding:16px; border-radius:12px;
+display:flex; justify-content:space-between; margin-bottom:10px;
+transition: opacity 0.4s ease, transform 0.4s ease;
+opacity: 1; transform: translateX(0); border-left: 5px solid transparent;
+}
+.habit-card.moving { opacity: 0; transform: translateX(30px); }
+
+.delete-btn{
+background:#7f1d1d; color:white; border:none; padding:7px 12px;
+border-radius:8px; cursor:pointer;
+}
+
+/* Badges */
+.badge-container { margin-top: 8px; display: flex; gap: 8px; flex-wrap: wrap; }
+.badge { font-size: 11px; padding: 4px 8px; border-radius: 6px; font-weight: bold; }
+.badge-freq { background: #334155; color: #cbd5e1; }
+.badge-category { background: #475569; color: #f8fafc; }
+.badge-streak { background: #c6a75e; color: #0f172a; }
+.badge-missed { background: #991b1b; color: #fecaca; }
+
+/* Collapsible Completed Section */
+.completed-header {
+background: #0f172a; border: 1px solid #334155; padding: 12px; border-radius: 8px;
+cursor: pointer; display: flex; justify-content: space-between; margin-top: 20px;
+font-weight: bold; transition: 0.3s;
+}
+.completed-header:hover { background: #1e293b; }
+#completedList { display: none; margin-top: 10px; }
+
+canvas{ background:#1e293b; border-radius:12px; margin-top:20px; width: 100%; max-width: 900px;}
+</style>
+</head>
+
+<body>
+
+<div id="welcomePage">
+<h1>Welcome to HabitFlow</h1>
+<p>Track discipline. Build consistency. Become elite.</p>
+<button class="start-btn" onclick="startApp()">Track Now</button>
+</div>
+
+<div id="appPage">
+<h1 style="text-align:center;">HabitFlow Elite</h1>
+
+<div class="add-habit">
+<input type="text" id="habitInput" placeholder="Habit Name">
+<select id="habitCategory">
+    <option value="Health">Health</option>
+    <option value="Fitness">Fitness</option>
+    <option value="Work">Work</option>
+    <option value="Personal">Personal</option>
+</select>
+<select id="habitFreq">
+    <option value="Daily">Daily</option>
+    <option value="Weekly">Weekly</option>
+</select>
+<input type="date" id="habitDate">
+<button onclick="addHabit()">Add</button>
+</div>
+
+<div id="newHabitBox">
+<p>Custom Habit – Choose Color:</p>
+<input type="color" id="newHabitColor" value="#c6a75e">
+<button onclick="confirmNewHabit()">Confirm</button>
+</div>
+
+<div class="dashboard">
+<div class="stat"><h3>Active Habits</h3><p id="totalHabits">0</p></div>
+<div class="stat"><h3>Completed Today</h3><p id="completedHabits">0</p></div>
+<div class="stat"><h3>Completion %</h3><p id="completionPercent">0%</p></div>
+</div>
+
+<h3>Today's Focus</h3>
+<div id="habitList"></div>
+
+<div class="completed-header" onclick="toggleCompletedSection()">
+    <span>Completed Habits</span>
+    <span id="completedArrow">▼</span>
+</div>
+<div id="completedList"></div>
+
+<h2>Progress Chart</h2>
+<canvas id="barChart" width="900" height="350"></canvas>
+
+</div>
+
+<script>
+function startApp(){
+document.getElementById("welcomePage").style.display="none"
+document.getElementById("appPage").style.display="block"
+}
+
+/* 50 Aesthetic Predefined Habits */
+const predefinedHabits = {
+// Fitness & Movement
+"Gym": "#c6a75e", "Running": "#e28743", "Walking": "#d4a373", "Yoga": "#e5989b", "Pilates": "#ffb4a2",
+"Stretching": "#fcd5ce", "Cycling": "#728fa5", "Swimming": "#457b9d", "Jump Rope": "#2a9d8f", "Boxing": "#e07a5f",
+// Health & Diet
+"Meditation": "#8e9aaf", "Hydration": "#a8dadc", "Vitamins": "#e9c46a", "Sleep 8h": "#3d5a80", "No Sugar": "#84a98c",
+"Cook Dinner": "#f4a261", "Eat Greens": "#52796f", "No Alcohol": "#d62828", "Intermittent Fasting": "#6d6875", "Breathwork": "#b5838d",
+// Work & Productivity
+"Coding": "#3a86ff", "Deep Work": "#023047", "Read 10 Pages": "#fb8500", "Email Zero": "#8d99ae", "Plan Tomorrow": "#219ebc",
+"Studying": "#118ab2", "Networking": "#9b2226", "Side Hustle": "#006d77", "Writing": "#00b4d8", "Brainstorming": "#ffb703",
+// Personal & Mindset
+"Journaling": "#ccd5ae", "Reading": "#e0a96d", "Gratitude": "#ffcad4", "Therapy": "#9c89b8", "No Social Media": "#5e548e",
+"Learn Language": "#2ec4b6", "Call Family": "#ff9f1c", "Budgeting": "#40916c", "Investing": "#1b4332", "Digital Detox": "#283618",
+// Home & Life
+"Cleaning": "#cad2c5", "Laundry": "#83c5be", "Water Plants": "#52b788", "Declutter": "#b7b7a4", "Read News": "#6c757d",
+"Walk Dog": "#9f86c0", "Skincare": "#ffc8dd", "Grooming": "#bde0fe", "Podcast": "#ffafcc", "Music Practice": "#a2d2ff"
+}
+
+let habits = JSON.parse(localStorage.getItem("habits")) || []
+let pendingHabit = null
+let showCompleted = false;
+
+function save(){ localStorage.setItem("habits", JSON.stringify(habits)) }
+
+function addHabit(){
+let name = document.getElementById("habitInput").value.trim()
+if(!name) return
+let date = document.getElementById("habitDate").value || new Date().toISOString().slice(0,10)
+let freq = document.getElementById("habitFreq").value
+let category = document.getElementById("habitCategory").value
+
+// Auto Title Case
+name = name.split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+
+if(predefinedHabits[name]){
+    createHabit(name, predefinedHabits[name], date, freq, category)
+}else{
+    pendingHabit = {name, date, freq, category}
+    document.getElementById("newHabitBox").style.display="block"
+}
+}
+
+function confirmNewHabit(){
+let color = document.getElementById("newHabitColor").value
+createHabit(pendingHabit.name, color, pendingHabit.date, pendingHabit.freq, pendingHabit.category)
+document.getElementById("newHabitBox").style.display="none"
+pendingHabit = null
+}
+
+function createHabit(name, color, date, freq, category){
+habits.push({
+    id: Date.now(), name, color, completed: false, 
+    date, freq: freq || 'Daily', category: category || 'Personal'
+})
+document.getElementById("habitInput").value=""
+save()
+render()
+drawChart()
+}
+
+function toggleHabit(id){
+let card = document.getElementById('habit-' + id);
+if(card) card.classList.add("moving");
+
+setTimeout(() => {
+    let habit = habits.find(h => h.id === id);
+    if(habit) {
+        habit.completed = !habit.completed;
+        
+        // AUTO-SCHEDULE NEXT HABIT ON COMPLETION
+        if (habit.completed) {
+            let [y, m, d] = habit.date.split('-');
+            let dObj = new Date(y, m-1, d);
+            dObj.setDate(dObj.getDate() + (habit.freq === 'Weekly' ? 7 : 1));
+            
+            let nextDate = dObj.getFullYear() + "-" + 
+                           String(dObj.getMonth()+1).padStart(2, '0') + "-" + 
+                           String(dObj.getDate()).padStart(2, '0');
+            
+            // Prevent duplicates on the exact next date
+            let exists = habits.some(h => h.name === habit.name && h.date === nextDate);
+            if (!exists) {
+                habits.push({
+                    id: Date.now() + Math.random(), // Unique ID
+                    name: habit.name,
+                    color: habit.color,
+                    completed: false,
+                    date: nextDate,
+                    freq: habit.freq,
+                    category: habit.category
+                });
+            }
+        }
+    }
+    save()
+    render()
+    drawChart()
+}, 400); 
+}
+
+function deleteHabit(id){
+habits = habits.filter(h => h.id !== id)
+save()
+render()
+drawChart()
+}
+
+function toggleCompletedSection() {
+showCompleted = !showCompleted;
+document.getElementById("completedList").style.display = showCompleted ? "block" : "none";
+document.getElementById("completedArrow").innerText = showCompleted ? "▲" : "▼";
+}
+
+function getHabitStats(name) {
+let habitEntries = habits.filter(h => h.name === name).sort((a, b) => new Date(b.date) - new Date(a.date));
+let streak = 0;
+let missed = false;
+let today = new Date().toISOString().slice(0,10);
+
+for (let h of habitEntries) {
+    if (h.completed) streak++;
+    else if (h.date < today) break; // Streak broken
+}
+
+let pastEntries = habitEntries.filter(h => h.date < today);
+if (pastEntries.length > 0 && !pastEntries[0].completed) {
+    missed = true;
+}
+return { streak, missed };
+}
+
+function render(){
+let activeList = document.getElementById("habitList")
+let completedList = document.getElementById("completedList")
+activeList.innerHTML = ""
+completedList.innerHTML = ""
+
+habits.forEach(h => {
+let stats = getHabitStats(h.name);
+let streakBadge = stats.streak > 0 ? `<span class="badge badge-streak">🔥 ${stats.streak} Streak</span>` : '';
+let missedBadge = (!h.completed && stats.missed && h.date <= new Date().toISOString().slice(0,10)) ? `<span class="badge badge-missed">⚠️ Missed Past Day</span>` : '';
+let freqBadge = `<span class="badge badge-freq">${h.freq || 'Daily'}</span>`;
+let catBadge = `<span class="badge badge-category">${h.category || 'General'}</span>`;
+
+let div = document.createElement("div")
+div.className = "habit-card"
+div.id = "habit-" + h.id
+div.style.borderLeftColor = h.color; // Color accent
+div.innerHTML = `
+<div>
+    <strong style="color:${h.color}; font-size:1.1rem;">${h.name}</strong><br>
+    <small style="color:#94a3b8;">${h.date}</small>
+    <div class="badge-container">
+        ${catBadge} ${freqBadge} ${streakBadge} ${missedBadge}
+    </div>
+</div>
+<div style="display:flex; align-items:center; gap:10px;">
+    <input type="checkbox" style="transform:scale(1.5); cursor:pointer;" ${h.completed?"checked":""} onchange="toggleHabit(${h.id})">
+    <button class="delete-btn" onclick="deleteHabit(${h.id})">Delete</button>
+</div>`
+
+if (h.completed) completedList.appendChild(div);
+else activeList.appendChild(div);
+})
+
+let uniqueActive = [...new Set(habits.filter(h => !h.completed).map(h => h.name))]
+let today = new Date().toISOString().slice(0,10)
+let completedToday = habits.filter(h => h.date === today && h.completed).length
+let scheduledToday = habits.filter(h => h.date === today).length
+let percent = scheduledToday ? Math.round((completedToday/scheduledToday)*100) : 0
+
+document.getElementById("totalHabits").innerText = uniqueActive.length
+document.getElementById("completedHabits").innerText = completedToday
+document.getElementById("completionPercent").innerText = percent + "%"
+}
+
+/* Fixed Chart Spacing & Whole Number Y-Axis */
+function drawChart(){
+let canvas = document.getElementById("barChart")
+let ctx = canvas.getContext("2d")
+ctx.clearRect(0,0,canvas.width,canvas.height)
+
+let completedHabits = habits.filter(h => h.completed)
+if(completedHabits.length === 0) return
+
+let map = {}
+completedHabits.forEach(h => {
+    if(!map[h.name]) map[h.name] = {count:0, color:h.color}
+    map[h.name].count++
+})
+
+let names = Object.keys(map)
+let max = Math.max(...names.map(n => map[n].count)) || 1
+
+let margin = 70
+let chartWidth = canvas.width - (margin * 2)
+let chartHeight = canvas.height - margin - 40 // room for text
+
+// Dynamic Spacing Logic
+let maxBarWidth = 60; 
+let gap = 20; 
+let totalAvailableWidth = chartWidth;
+let calculatedBarWidth = (totalAvailableWidth - (names.length * gap)) / names.length;
+let finalBarWidth = Math.min(calculatedBarWidth, maxBarWidth);
+
+let totalContentWidth = (names.length * finalBarWidth) + ((names.length - 1) * gap);
+let startX = margin + (chartWidth - totalContentWidth) / 2;
+
+// Draw axes
+ctx.strokeStyle = "#334155"
+ctx.beginPath()
+ctx.moveTo(margin, 20)
+ctx.lineTo(margin, canvas.height-margin)
+ctx.lineTo(canvas.width-margin, canvas.height-margin)
+ctx.stroke()
+
+// Fix: Dynamic Whole Number Y-Axis
+let step = Math.ceil(max / 5); 
+for(let value = 0; value <= max; value += step){
+    let y = canvas.height - margin - (value/max)*chartHeight
+    ctx.fillStyle = "#94a3b8"
+    ctx.textAlign = "right"
+    ctx.fillText(value, margin-15, y+5)
+}
+
+// Draw Bars
+names.forEach((name, i) => {
+    let x = startX + i * (finalBarWidth + gap)
+    let h = (map[name].count/max) * chartHeight
+    let y = canvas.height - margin - h
+    
+    ctx.fillStyle = map[name].color
+    ctx.beginPath();
+    ctx.roundRect(x, y, finalBarWidth, h, [6, 6, 0, 0]);
+    ctx.fill();
+
+    // Angled Text
+    ctx.fillStyle = "#e5e7eb"
+    ctx.save()
+    ctx.translate(x + finalBarWidth/2, canvas.height - margin + 20)
+    ctx.rotate(-Math.PI/4)
+    ctx.textAlign = "right"
+    ctx.font = "14px Helvetica"
+    ctx.fillText(name, 0, 0)
+    ctx.restore()
+})
+}
+
+render()
+drawChart()
+
+</script>
+</body>
+</html>
